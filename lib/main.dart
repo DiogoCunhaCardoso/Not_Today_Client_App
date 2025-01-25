@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:not_today_client/screens/main/menu_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -10,12 +11,12 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Addiction Killer',
+      title: 'Not Today',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const Text("Hello App"),
+      home: const HomeScreen(),
     );
   }
 }
