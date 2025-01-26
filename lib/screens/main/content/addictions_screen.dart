@@ -29,7 +29,8 @@ class AddictionScreen extends ConsumerWidget {
                 final isAlreadyAdded = userAddictions.any(
                   (addiction) =>
                       addiction.addictionType.toLowerCase() ==
-                      addictionType.name.toLowerCase(),
+                          addictionType.name.toLowerCase() &&
+                      addiction.userId == loggedInUser?.id,
                 );
 
                 return ListTile(
