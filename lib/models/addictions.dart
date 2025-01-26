@@ -1,22 +1,4 @@
-enum AddictionType {
-  alcohol,
-  attentionSeeking,
-  badLanguage,
-  caffeine,
-  dairy,
-  drug,
-  fastFood,
-  gambling,
-  nailBiting,
-  porn,
-  procrastination,
-  selfHarm,
-  smoking,
-  socialMedia,
-  softDrinks,
-  sugar,
-  vaping,
-}
+import 'package:not_today_client/utils/addiction_helpers.dart';
 
 enum AddictionReason {
   money,

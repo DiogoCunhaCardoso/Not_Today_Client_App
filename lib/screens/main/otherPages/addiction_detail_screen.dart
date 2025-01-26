@@ -1,83 +1,37 @@
 import 'package:flutter/material.dart';
-import 'package:not_today_client/models/data/dummy_data.dart'; // Import the dummy data
-import 'package:not_today_client/models/addictions.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:not_today_client/providers/user_addiction_provider.dart';
+import 'package:not_today_client/utils/addiction_helpers.dart';
 
-class AddictionDetailScreen extends StatelessWidget {
-  final String addictionId; // To hold the id passed from the previous screen
+class AddictionDetailScreen extends ConsumerWidget {
+  final String addictionId; // Recebe o ID do vício
 
-  // Constructor to initialize the addictionId
   const AddictionDetailScreen({super.key, required this.addictionId});
 
-  String getAddictionLabel(AddictionType addictionType) {
-    switch (addictionType) {
-      case AddictionType.alcohol:
-        return 'Alcohol';
-      case AddictionType.attentionSeeking:
-        return 'Attention Seeking';
-      case AddictionType.badLanguage:
-        return 'Bad Language';
-      case AddictionType.caffeine:
-        return 'Caffeine';
-      case AddictionType.dairy:
-        return 'Dairy';
-      case AddictionType.drug:
-        return 'Drugs';
-      case AddictionType.fastFood:
-        return 'Fast Food';
-      case AddictionType.gambling:
-        return 'Gambling';
-      case AddictionType.nailBiting:
-        return 'Nail Biting';
-      case AddictionType.porn:
-        return 'Porn';
-      case AddictionType.procrastination:
-        return 'Procrastination';
-      case AddictionType.selfHarm:
-        return 'Self Harm';
-      case AddictionType.smoking:
-        return 'Smoking';
-      case AddictionType.socialMedia:
-        return 'Social Media';
-      case AddictionType.softDrinks:
-        return 'Soft Drinks';
-      case AddictionType.sugar:
-        return 'Sugar';
-      case AddictionType.vaping:
-        return 'Vaping';
-      default:
-        return 'Unknown';
-    }
-  }
-
-  // Method to show the delete confirmation dialog
   Future<void> _showDeleteDialog(
-      BuildContext context, String addictionType) async {
+      BuildContext context, String addictionType, WidgetRef ref) async {
     return showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text('Delete $addictionType Addiction?'),
-          content: const SingleChildScrollView(
-            child: ListBody(
-              children: <Widget>[
-                Text(
-                    'Are you sure you want to delete this addiction? This action can\'t be undone.'),
-              ],
-            ),
-          ),
+          content: const Text(
+              'Are you sure you want to delete this addiction? This action cannot be undone.'),
           actions: <Widget>[
             TextButton(
               child: const Text('Cancel'),
               onPressed: () {
-                Navigator.of(context).pop(); // Close the dialog
+                Navigator.of(context).pop();
               },
             ),
             TextButton(
               child: const Text('Yes'),
               onPressed: () {
-                print('Addiction $addictionType deleted.');
-                Navigator.of(context).pop(); // Close the dialog
+                ref
+                    .read(userAddictionProvider.notifier)
+                    .removeAddiction(addictionId); // Remove o vício
+                Navigator.of(context).pop(); // Fecha o diálogo
               },
             ),
           ],
@@ -87,10 +41,14 @@ class AddictionDetailScreen extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
-    // Find the addiction by id, assuming the id exists
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Recupera a lista de vícios do provider
+    final userAddictions = ref.watch(userAddictionProvider);
+
+    // Encontra o vício correspondente ao ID
     final userAddiction = userAddictions.firstWhere(
       (addiction) => addiction.id == addictionId,
+      orElse: () => throw Exception('Addiction not found!'),
     );
 
     return Scaffold(
@@ -101,14 +59,16 @@ class AddictionDetailScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.delete),
             onPressed: () {
-              // Show the delete confirmation dialog when clicked
               _showDeleteDialog(
                 context,
-                getAddictionLabel(AddictionType.values.firstWhere(
-                  (e) =>
-                      e.toString().split('.').last ==
-                      userAddiction.addictionType.toLowerCase(),
-                )),
+                getAddictionLabel(
+                  AddictionType.values.firstWhere(
+                    (type) =>
+                        type.name.toLowerCase() ==
+                        userAddiction.addictionType.toLowerCase(),
+                  ),
+                ),
+                ref,
               );
             },
           ),
@@ -130,7 +90,19 @@ class AddictionDetailScreen extends StatelessWidget {
                 style: Theme.of(context).textTheme.bodyLarge,
               ),
               Text(
-                'Addiction Type: ${getAddictionLabel(AddictionType.values.firstWhere((e) => e.toString().split('.').last == userAddiction.addictionType.toLowerCase()))}',
+                'Addiction Type: ${getAddictionLabel(AddictionType.values.firstWhere((type) => type.name.toLowerCase() == userAddiction.addictionType.toLowerCase()))}',
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+              Text(
+                'Severity: ${userAddiction.severity}',
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+              Text(
+                'Motivation: ${userAddiction.motivation.join(', ')}',
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+              Text(
+                'Reason Amount: ${userAddiction.reasonAmount}',
                 style: Theme.of(context).textTheme.bodyLarge,
               ),
               Text(

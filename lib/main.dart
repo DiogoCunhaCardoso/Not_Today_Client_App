@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:not_today_client/screens/main/menu_screen.dart';
+import 'package:not_today_client/screens/auth/login_screen.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(
+    const ProviderScope(
+      child: MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -16,7 +21,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const HomeScreen(),
+      home: LoginScreen(),
     );
   }
 }

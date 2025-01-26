@@ -1,124 +1,164 @@
 import 'package:flutter/material.dart';
-import 'package:not_today_client/screens/main/otherPages/settings_screen.dart';
-import 'package:not_today_client/models/data/dummy_data.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:not_today_client/providers/user_provider.dart';
+import 'package:not_today_client/providers/user_milestone_provider.dart'; // Import the milestone provider
+import 'package:not_today_client/screens/auth/login_screen.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
-  // Helper function to format the joined date
-  String formatJoinedDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
-  }
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final userLogged = ref.watch(userProvider);
+    final userLoggedNotifier = ref.read(userProvider.notifier);
+
+    // Fetch user milestones using the provider's method
+    final loggedInUserMilestones = ref
+        .read(userMilestoneProvider.notifier)
+        .getLoggedInUserMilestones(userLogged!.id);
+
     return Scaffold(
       appBar: AppBar(
+        title: const Text('Profile'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings),
+            icon: const Icon(Icons.logout),
             onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => const SettingsScreen()),
+              userLoggedNotifier.logout();
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (context) => LoginScreen()),
               );
             },
           ),
         ],
       ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-          child: SizedBox(
-            width: double.infinity,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Profile Avatar and Name Section using actual user data
-                CircleAvatar(
-                  radius: 50, // Makes the avatar larger
-                  child: Text(
-                    users.name[0], // First letter of the user's name
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w500,
-                        ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  users.name, // User's name from the `users` constant
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Joined: ${formatJoinedDate(DateTime(2024, 10, 5))}', // Show the actual joined date
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.grey[600],
-                      ),
-                ),
-                const SizedBox(height: 20),
+      body: SingleChildScrollView(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Profile section
+            CircleAvatar(
+              radius: 50,
+              backgroundImage:
+                  userLogged.pfp != null ? NetworkImage(userLogged.pfp!) : null,
+              child: userLogged.pfp == null ? Text(userLogged.name[0]) : null,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              userLogged.name,
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+            const SizedBox(height: 8),
+            Text(userLogged.email),
 
-                // Milestones Horizontal Scroll List
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: SizedBox(
-                    height: 120,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: userMilestones.length,
-                      itemBuilder: (context, index) {
-                        final milestone = userMilestones[index];
+            const SizedBox(height: 32),
 
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 16),
-                          child: Card(
-                            elevation: 5,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Container(
-                              width: 150, // Fixed width for each milestone
-                              padding: const EdgeInsets.all(8),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  // Milestone Title
-                                  Text(
-                                    milestone.name.toString().split('.').last,
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                    ),
+            // Horizontally scrollable list for milestones
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: SizedBox(
+                height: 160, // Define height of the horizontal list
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: loggedInUserMilestones.isNotEmpty
+                      ? loggedInUserMilestones.length
+                      : 3, // Show 3 placeholders if no milestones
+                  itemBuilder: (context, index) {
+                    if (loggedInUserMilestones.isEmpty) {
+                      // Placeholder card if no milestones
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                        child: Card(
+                          elevation: 4,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Container(
+                            width: 120, // Each item width
+                            padding: const EdgeInsets.all(8.0),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons
+                                      .star_border, // Placeholder icon for no milestone
+                                  size: 40,
+                                ),
+                                const SizedBox(height: 8),
+                                const Text(
+                                  'No Milestone',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
                                   ),
-                                  const SizedBox(height: 8),
-                                  // Milestone Level
-                                  Text(
-                                    'Level: ${milestone.level}',
-                                    style: TextStyle(
-                                      color: Colors.grey[600],
-                                    ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Level N/A',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey[600],
                                   ),
-                                  const SizedBox(height: 8),
-                                  // Milestone Date
-                                  Text(
-                                    'Achieved: ${milestone.achievedDate.day}/${milestone.achievedDate.month}/${milestone.achievedDate.year}',
-                                    style: TextStyle(
-                                      color: Colors.grey[600],
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
                           ),
-                        );
-                      },
-                    ),
-                  ),
+                        ),
+                      );
+                    } else {
+                      final milestone = loggedInUserMilestones[index];
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                        child: Card(
+                          elevation: 4,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Container(
+                            width: 120, // Each item width
+                            padding: const EdgeInsets.all(8.0),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                // Display milestone icon (based on name)
+                                const Icon(
+                                  Icons
+                                      .star, // You can change this to represent the milestone
+                                  size: 40,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  milestone.name
+                                      .toString()
+                                      .split('.')
+                                      .last, // Show the name (formatted)
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 4),
+                                // Display milestone level
+                                Text(
+                                  'Level ${milestone.level}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }
+                  },
                 ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );

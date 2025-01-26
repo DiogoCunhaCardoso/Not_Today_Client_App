@@ -1,17 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:not_today_client/models/data/dummy_data.dart';
+import 'package:not_today_client/providers/diary_provider.dart';
+import 'package:not_today_client/providers/user_provider.dart';
 
-class DiariesScreen extends StatefulWidget {
+class DiariesScreen extends ConsumerWidget {
   const DiariesScreen({super.key});
-
-  @override
-  _DiariesScreenState createState() => _DiariesScreenState();
-}
-
-class _DiariesScreenState extends State<DiariesScreen> {
-  final _titleController = TextEditingController();
-  final _contentController = TextEditingController();
 
   // Method to format date to "dd/MM/yyyy"
   String formatDate(DateTime date) {
@@ -19,17 +13,18 @@ class _DiariesScreenState extends State<DiariesScreen> {
   }
 
   // Method to show the BottomSheet
-  void _showAddDiaryBottomSheet(BuildContext context) {
+  void _showAddDiaryBottomSheet(BuildContext context, WidgetRef ref) {
+    final titleController = TextEditingController();
+    final contentController = TextEditingController();
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true, // To allow control of height
-      backgroundColor: Colors
-          .transparent, // Make the background transparent to use custom height
+
       builder: (BuildContext context) {
         return Container(
           padding: const EdgeInsets.all(16.0),
-          height: MediaQuery.of(context).size.height *
-              0.75, // Set height to 75% of the screen
+          height: MediaQuery.of(context).size.height * 0.75,
           decoration: BoxDecoration(
             color: Theme.of(context).scaffoldBackgroundColor,
             borderRadius: const BorderRadius.only(
@@ -42,7 +37,7 @@ class _DiariesScreenState extends State<DiariesScreen> {
             children: [
               // Title Input Field
               TextField(
-                controller: _titleController,
+                controller: titleController,
                 decoration: const InputDecoration(
                   labelText: 'Title',
                   border: OutlineInputBorder(),
@@ -51,7 +46,7 @@ class _DiariesScreenState extends State<DiariesScreen> {
               const SizedBox(height: 16),
               // Content Input Field
               TextField(
-                controller: _contentController,
+                controller: contentController,
                 decoration: const InputDecoration(
                   labelText: 'Content',
                   border: OutlineInputBorder(),
@@ -61,7 +56,25 @@ class _DiariesScreenState extends State<DiariesScreen> {
               const SizedBox(height: 16),
               // Submit Button
               ElevatedButton(
-                onPressed: _addDiary,
+                onPressed: () {
+                  final title = titleController.text.trim();
+                  final content = contentController.text.trim();
+
+                  if (title.isNotEmpty && content.isNotEmpty) {
+                    ref.read(diaryProvider.notifier).addDiary(
+                          'user_001',
+                          title,
+                          content,
+                        );
+                    Navigator.of(context).pop();
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Please fill in all fields.'),
+                      ),
+                    );
+                  }
+                },
                 child: const Text('Add Diary'),
               ),
             ],
@@ -71,32 +84,23 @@ class _DiariesScreenState extends State<DiariesScreen> {
     );
   }
 
-  // Method to add a diary entry
-  void _addDiary() {
-    final String title = _titleController.text;
-    final String content = _contentController.text;
-
-    if (title.isNotEmpty && content.isNotEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Diary added: $title')),
-      );
-      // Andre, aqui que depois se faz a mutation do add.
-      _titleController.clear();
-      _contentController.clear();
-      Navigator.of(context).pop();
-    }
-  }
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final loggedInUser = ref.watch(userProvider);
+    final diaries = loggedInUser != null
+        ? ref
+            .watch(diaryProvider.notifier)
+            .getLoggedInUserDiaries(loggedInUser.id)
+        : [];
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("Your Diary"),
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
-            onPressed: () => _showAddDiaryBottomSheet(context),
-          )
+            onPressed: () => _showAddDiaryBottomSheet(context, ref),
+          ),
         ],
       ),
       body: diaries.isEmpty
@@ -127,7 +131,7 @@ class _DiariesScreenState extends State<DiariesScreen> {
                       ],
                     ),
                     onTap: () {
-                      // On tap, show the full diary details or navigate to a different screen
+                      // On tap, show the full diary details
                       showDialog(
                         context: context,
                         builder: (BuildContext context) {
