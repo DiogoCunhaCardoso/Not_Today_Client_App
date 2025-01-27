@@ -3,24 +3,40 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:not_today_client/providers/diary_provider.dart';
 import 'package:not_today_client/providers/user_provider.dart';
+import 'package:not_today_client/graphql/graphql_service.dart';
 
-class DiariesScreen extends ConsumerWidget {
+class DiariesScreen extends ConsumerStatefulWidget {
   const DiariesScreen({super.key});
 
-  // Method to format date to "dd/MM/yyyy"
-  String formatDate(DateTime date) {
-    return DateFormat('dd/MM/yyyy').format(date);
+  @override
+  DiariesScreenState createState() => DiariesScreenState();
+}
+
+class DiariesScreenState extends ConsumerState<DiariesScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _contentController = TextEditingController();
+  String? _titleError;
+  String? _contentError;
+  bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    final loggedInUser = ref.read(userProvider);
+    if (loggedInUser != null) {
+      ref
+          .read(diaryProvider.notifier)
+          .fetchDiaries("678938ae4568454eb72369f2"); // loggedInUser.id
+    }
   }
 
-  // Method to show the BottomSheet
+  // Show Add Diary Bottom Sheet
   void _showAddDiaryBottomSheet(BuildContext context, WidgetRef ref) {
-    final titleController = TextEditingController();
-    final contentController = TextEditingController();
-
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true, // To allow control of height
-
+      isScrollControlled: true,
       builder: (BuildContext context) {
         return Container(
           padding: const EdgeInsets.all(16.0),
@@ -32,52 +48,99 @@ class DiariesScreen extends ConsumerWidget {
               topRight: Radius.circular(16),
             ),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Title Input Field
-              TextField(
-                controller: titleController,
-                decoration: const InputDecoration(
-                  labelText: 'Title',
-                  border: OutlineInputBorder(),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Title Input Field
+                TextFormField(
+                  controller: _titleController,
+                  decoration: InputDecoration(
+                    labelText: 'Title',
+                    errorText: _titleError,
+                    border: const OutlineInputBorder(),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Title is required';
+                    }
+                    return null;
+                  },
                 ),
-              ),
-              const SizedBox(height: 16),
-              // Content Input Field
-              TextField(
-                controller: contentController,
-                decoration: const InputDecoration(
-                  labelText: 'Content',
-                  border: OutlineInputBorder(),
+                const SizedBox(height: 16),
+                // Content Input Field
+                TextFormField(
+                  controller: _contentController,
+                  decoration: InputDecoration(
+                    labelText: 'Content',
+                    errorText: _contentError,
+                    border: const OutlineInputBorder(),
+                  ),
+                  maxLines: 4,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Content is required';
+                    }
+                    return null;
+                  },
                 ),
-                maxLines: 4,
-              ),
-              const SizedBox(height: 16),
-              // Submit Button
-              ElevatedButton(
-                onPressed: () {
-                  final title = titleController.text.trim();
-                  final content = contentController.text.trim();
+                const SizedBox(height: 16),
+                // Submit Button
+                ElevatedButton(
+                  onPressed: () async {
+                    final title = _titleController.text.trim();
+                    final content = _contentController.text.trim();
 
-                  if (title.isNotEmpty && content.isNotEmpty) {
-                    ref.read(diaryProvider.notifier).addDiary(
-                          'user_001',
-                          title,
-                          content,
+                    if (_formKey.currentState?.validate() ?? false) {
+                      // Set loading state to true while submitting
+                      setState(() {
+                        _isSubmitting = true;
+                      });
+
+                      final loggedInUser = ref.read(userProvider);
+
+                      if (loggedInUser != null) {
+                        final success = await GraphQLService().createDiary(
+                          userId:
+                              "678938ae4568454eb72369f2", // TODO: loggedInUser.id
+                          title: title,
+                          content: content,
                         );
-                    Navigator.of(context).pop();
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Please fill in all fields.'),
-                      ),
-                    );
-                  }
-                },
-                child: const Text('Add Diary'),
-              ),
-            ],
+
+                        setState(() {
+                          _isSubmitting = false; // Reset loading state
+                        });
+
+                        if (success) {
+                          Navigator.of(context).pop();
+                          _titleController.clear();
+                          _contentController.clear();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Diary entry added!')),
+                          );
+
+                          // Re-fetch diaries after adding a new one to update the list
+                          ref.read(diaryProvider.notifier).fetchDiaries(
+                              "678938ae4568454eb72369f2"); //TODO loggedInUser.id
+                        } else {
+                          Navigator.of(context).pop();
+                          _titleController.clear();
+                          _contentController.clear();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text('Failed to create diary entry')),
+                          );
+                        }
+                      }
+                    }
+                  },
+                  child: _isSubmitting
+                      ? const CircularProgressIndicator() // Show spinner while submitting
+                      : const Text('Add Diary'),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -85,13 +148,8 @@ class DiariesScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final loggedInUser = ref.watch(userProvider);
-    final diaries = loggedInUser != null
-        ? ref
-            .watch(diaryProvider.notifier)
-            .getLoggedInUserDiaries(loggedInUser.id)
-        : [];
+  Widget build(BuildContext context) {
+    final diaries = ref.watch(diaryProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -164,4 +222,9 @@ class DiariesScreen extends ConsumerWidget {
             ),
     );
   }
+}
+
+//  Format Date
+String formatDate(DateTime date) {
+  return DateFormat('dd/MM/yyyy').format(date);
 }

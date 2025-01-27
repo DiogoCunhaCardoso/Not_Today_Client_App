@@ -1,59 +1,25 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-// Diary model
-class Diary {
-  final String id;
-  final String userId;
-  final String title;
-  final String content;
-  final DateTime date;
-  final DateTime createdAt;
-
-  const Diary({
-    required this.id,
-    required this.userId,
-    required this.title,
-    required this.content,
-    required this.date,
-    required this.createdAt,
-  });
-}
-
-// Initial dummy diary data
-final _initialDiaries = [
-  Diary(
-    id: 'diary_001',
-    userId: 'user_001',
-    title: 'First Day of Sobriety',
-    content: 'Today was tough, but I am determined to change.',
-    date: DateTime.now(),
-    createdAt: DateTime.now(),
-  ),
-  Diary(
-    id: 'diary_002',
-    userId: 'user_001',
-    title: 'Small Victories',
-    content: 'I resisted the urge to drink coffee this morning!',
-    date: DateTime.now(),
-    createdAt: DateTime.now(),
-  ),
-  Diary(
-    id: 'diary_003',
-    userId: 'user_001',
-    title: 'Social Media Detox',
-    content: 'I realized how much time I saved by avoiding social media.',
-    date: DateTime.now(),
-    createdAt: DateTime.now(),
-  ),
-];
+import 'package:not_today_client/graphql/graphql_service.dart';
+import 'package:not_today_client/models/diary_model.dart';
 
 // DiaryNotifier to manage diaries
-class DiaryNotifier extends StateNotifier<List<Diary>> {
-  DiaryNotifier() : super(_initialDiaries);
+class DiaryNotifier extends StateNotifier<List<DiaryModel>> {
+  final GraphQLService graphQLService;
+  DiaryNotifier(this.graphQLService) : super([]);
+
+  Future<void> fetchDiaries(String userId) async {
+    try {
+      // Get the diaries from the API
+      List<DiaryModel> fetchedDiaries =
+          await graphQLService.diaryEntries(userId: userId);
+
+      state = fetchedDiaries;
+    } catch (e) {}
+  }
 
   // Method to add a new diary entry
   void addDiary(String userId, String title, String content) {
-    final newDiary = Diary(
+    final newDiary = DiaryModel(
       id: DateTime.now().toString(),
       userId: userId,
       title: title,
@@ -70,10 +36,10 @@ class DiaryNotifier extends StateNotifier<List<Diary>> {
   }
 
   // Method to get diaries of the logged-in user
-  List<Diary> getLoggedInUserDiaries(String userId) {
+  List<DiaryModel> getLoggedInUserDiaries(String userId) {
     return state.where((diary) => diary.userId == userId).toList();
   }
 }
 
-final diaryProvider =
-    StateNotifierProvider<DiaryNotifier, List<Diary>>((ref) => DiaryNotifier());
+final diaryProvider = StateNotifierProvider<DiaryNotifier, List<DiaryModel>>(
+    (ref) => DiaryNotifier(GraphQLService()));
