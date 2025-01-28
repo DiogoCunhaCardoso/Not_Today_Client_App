@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:not_today_client/screens/auth/login_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:not_today_client/screens/auth/register_screen.dart';
 
 void main() {
   runApp(
@@ -21,7 +21,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: LoginScreen(),
+      home: const RegisterScreen(),
     );
   }
 }

@@ -1,11 +1,93 @@
 import 'package:graphql_flutter/graphql_flutter.dart';
 import 'package:not_today_client/graphql/graphql_config.dart';
 import 'package:not_today_client/graphql/requests/diary_requests.dart';
+import 'package:not_today_client/graphql/requests/user_requests.dart';
 import 'package:not_today_client/models/diary_model.dart';
 
 class GraphQLService {
   static GraphQLConfig graphQLConfig = GraphQLConfig();
   GraphQLClient client = graphQLConfig.clientToQuery();
+
+  // Method for user registration
+  Future<bool> registerUser({
+    required String name,
+    required String email,
+    required String password,
+  }) async {
+    try {
+      // Perform the mutation
+      QueryResult result = await client.mutate(
+        MutationOptions(
+          fetchPolicy: FetchPolicy.noCache,
+          document: gql(registerUserMutation),
+          variables: {
+            "input": {
+              "name": name,
+              "email": email,
+              "password": password,
+            },
+          },
+        ),
+      );
+
+      // Handle exceptions
+      if (result.hasException) {
+        throw Exception(result.exception.toString());
+      }
+
+      // If the mutation succeeds, return true
+      return result.data?['createUser'] != null;
+    } catch (e) {
+      // If any errors occur, return false
+      throw Exception('Error registering user: $e');
+    }
+  }
+
+  // Method for user login
+  Future<Map<String, dynamic>?> loginUser({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      // Define the login mutation query
+      const String loginMutation = """
+        mutation(\$input: LoginInput!) {
+          login(input: \$input) {
+            token
+          }
+        }
+      """;
+
+      // Perform the mutation
+      QueryResult result = await client.mutate(
+        MutationOptions(
+          fetchPolicy: FetchPolicy.noCache,
+          document: gql(loginMutation),
+          variables: {
+            "input": {
+              "email": email,
+              "password": password,
+            },
+          },
+        ),
+      );
+
+      // Handle exceptions
+      if (result.hasException) {
+        throw Exception(result.exception.toString());
+      }
+
+      // If the mutation succeeds, return the token
+      if (result.data?['login'] != null) {
+        return result.data?['login'];
+      }
+
+      // If login fails, return null
+      return null;
+    } catch (e) {
+      throw Exception('Error logging in user: $e');
+    }
+  }
 
   // Fetch diary entries from the API
   Future<List<DiaryModel>> diaryEntries({required String userId}) async {
