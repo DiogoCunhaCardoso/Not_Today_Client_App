@@ -1,18 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:not_today_client/providers/diary_provider.dart';
-import 'package:not_today_client/providers/user_provider.dart';
 import 'package:not_today_client/graphql/graphql_service.dart';
+import 'package:not_today_client/utils/secure_storage.dart';
 
-class DiariesScreen extends ConsumerStatefulWidget {
+class DiariesScreen extends StatefulWidget {
   const DiariesScreen({super.key});
 
   @override
   DiariesScreenState createState() => DiariesScreenState();
 }
 
-class DiariesScreenState extends ConsumerState<DiariesScreen> {
+class DiariesScreenState extends State<DiariesScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _contentController = TextEditingController();
@@ -20,20 +18,41 @@ class DiariesScreenState extends ConsumerState<DiariesScreen> {
   String? _contentError;
   bool _isSubmitting = false;
 
+  List<Map<String, dynamic>> diaries = [];
+
   @override
   void initState() {
     super.initState();
+    // Fetch the diaries when the screen loads
+    _fetchDiaries();
+  }
 
-    final loggedInUser = ref.read(userProvider);
-    if (loggedInUser != null) {
-      ref
-          .read(diaryProvider.notifier)
-          .fetchDiaries("678938ae4568454eb72369f2"); // loggedInUser.id
+  // Fetch diaries from GraphQL
+  Future<void> _fetchDiaries() async {
+    try {
+      // Retrieve the token from SecureStorage
+      String? token = await SecureStorage.retrieveToken(); // Get the token
+
+      if (token == null || token.isEmpty) {
+        print("No token found, user is not authenticated.");
+        return;
+      }
+
+      // Use the token to fetch diaries
+      final fetchedDiaries = await GraphQLService().getDiaries();
+
+      setState(() {
+        diaries = fetchedDiaries; // Update the diaries list in the state
+      });
+      print(fetchedDiaries);
+    } catch (e) {
+      // Handle any error fetching diaries (e.g., show an error message)
+      print("Error fetching diaries: $e");
     }
   }
 
   // Show Add Diary Bottom Sheet
-  void _showAddDiaryBottomSheet(BuildContext context, WidgetRef ref) {
+  void _showAddDiaryBottomSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -98,12 +117,9 @@ class DiariesScreenState extends ConsumerState<DiariesScreen> {
                         _isSubmitting = true;
                       });
 
-                      final loggedInUser = ref.read(userProvider);
-
-                      if (loggedInUser != null) {
+                      try {
+                        // Call createDiary function from GraphQLService
                         final success = await GraphQLService().createDiary(
-                          userId:
-                              "678938ae4568454eb72369f2", // TODO: loggedInUser.id
                           title: title,
                           content: content,
                         );
@@ -121,16 +137,29 @@ class DiariesScreenState extends ConsumerState<DiariesScreen> {
                           );
 
                           // Re-fetch diaries after adding a new one to update the list
-                          ref.read(diaryProvider.notifier).fetchDiaries(
-                              "678938ae4568454eb72369f2"); //TODO loggedInUser.id
+                          await _fetchDiaries();
+                        }
+                      } catch (e) {
+                        setState(() {
+                          _isSubmitting = false;
+                        });
+
+                        // Check for the specific error and show it
+                        if (e is Exception) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(e
+                                  .toString()), // Show the specific error message
+                            ),
+                          );
+                          Navigator.pop(context);
                         } else {
-                          Navigator.of(context).pop();
-                          _titleController.clear();
-                          _contentController.clear();
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                                content: Text('Failed to create diary entry')),
+                              content: Text('Failed to create diary entry'),
+                            ),
                           );
+                          Navigator.pop(context);
                         }
                       }
                     }
@@ -149,15 +178,13 @@ class DiariesScreenState extends ConsumerState<DiariesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final diaries = ref.watch(diaryProvider);
-
     return Scaffold(
       appBar: AppBar(
         title: const Text("Your Diary"),
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
-            onPressed: () => _showAddDiaryBottomSheet(context, ref),
+            onPressed: () => _showAddDiaryBottomSheet(context),
           ),
         ],
       ),
@@ -171,36 +198,35 @@ class DiariesScreenState extends ConsumerState<DiariesScreen> {
                   margin:
                       const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                   child: ListTile(
-                    title: Text(diary.title),
+                    title: Text(diary['title']),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          diary.content.length > 30
-                              ? '${diary.content.substring(0, 30)}...'
-                              : diary.content,
+                          diary['content'].length > 30
+                              ? '${diary['content'].substring(0, 30)}...'
+                              : diary['content'],
                           style: TextStyle(color: Colors.grey[600]),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          formatDate(diary.date),
+                          formatDate(diary['date']),
                           style: TextStyle(color: Colors.grey[500]),
                         ),
                       ],
                     ),
                     onTap: () {
-                      // On tap, show the full diary details
                       showDialog(
                         context: context,
                         builder: (BuildContext context) {
                           return AlertDialog(
-                            title: Text(diary.title),
+                            title: Text(diary['title']),
                             content: SingleChildScrollView(
                               child: ListBody(
                                 children: <Widget>[
-                                  Text(diary.content),
+                                  Text(diary['content']),
                                   const SizedBox(height: 10),
-                                  Text('Date: ${formatDate(diary.date)}'),
+                                  Text('Date: ${formatDate(diary['date'])}'),
                                 ],
                               ),
                             ),
@@ -210,6 +236,31 @@ class DiariesScreenState extends ConsumerState<DiariesScreen> {
                                   Navigator.of(context).pop();
                                 },
                                 child: const Text('Close'),
+                              ),
+                              TextButton(
+                                onPressed: () async {
+                                  bool success = await GraphQLService()
+                                      .deleteDiary(diary['id']);
+                                  if (success) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                          content: Text(
+                                              'Diary deleted successfully')),
+                                    );
+                                    Navigator.of(context).pop();
+                                    _fetchDiaries(); // Refresh list
+                                  } else {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                          content:
+                                              Text('Failed to delete diary')),
+                                    );
+                                  }
+                                },
+                                child: const Text(
+                                  'Delete',
+                                  style: TextStyle(color: Colors.red),
+                                ),
                               ),
                             ],
                           );
@@ -224,7 +275,7 @@ class DiariesScreenState extends ConsumerState<DiariesScreen> {
   }
 }
 
-//  Format Date
+// Format Date
 String formatDate(DateTime date) {
   return DateFormat('dd/MM/yyyy').format(date);
 }

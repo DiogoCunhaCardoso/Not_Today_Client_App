@@ -42,12 +42,15 @@ class LoginScreenState extends State<LoginScreen> {
 
       if (context.mounted) {
         if (result != null && result['token'] != null) {
-          // Login successful
+          // Token was successfully stored in SecureStorage by the service
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Login successful!')),
           );
-          await Future.delayed(const Duration(seconds: 1));
+
+          await Future.delayed(const Duration(seconds: 1)); // Optional delay
+
           if (context.mounted) {
+            // Navigate to the HomeScreen after successful login
             Navigator.of(context).pushReplacement(
               MaterialPageRoute(builder: (ctx) => const HomeScreen()),
             );
@@ -70,6 +73,7 @@ class LoginScreenState extends State<LoginScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(errorMessage)),
         );
+        print(e.toString());
       }
     } finally {
       if (context.mounted) {

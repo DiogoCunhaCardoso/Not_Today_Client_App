@@ -143,7 +143,7 @@ class RegisterScreenState extends State<RegisterScreen> {
                       onPressed: () {
                         Navigator.of(context).pushReplacement(
                           MaterialPageRoute(
-                            builder: (ctx) => LoginScreen(),
+                            builder: (ctx) => const LoginScreen(),
                           ),
                         );
                       },

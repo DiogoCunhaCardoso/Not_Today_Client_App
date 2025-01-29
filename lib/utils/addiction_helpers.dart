@@ -56,8 +56,6 @@ String getAddictionLabel(AddictionType addictionType) {
       return 'Sugar';
     case AddictionType.vaping:
       return 'Vaping';
-    default:
-      return 'Unknown';
   }
 }
 
@@ -97,7 +95,5 @@ IconData getAddictionIcon(AddictionType addictionType) {
       return Icons.food_bank;
     case AddictionType.vaping:
       return Icons.air;
-    default:
-      return Icons.help;
   }
 }
