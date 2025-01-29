@@ -1,16 +1,15 @@
-# not_today_client
+# Install flutter on machine
+https://docs.flutter.dev/get-started/install?_gl=1*to6vtz*_ga*NTgzNTY5NDE1LjE3MzY0MjA1NjQ.*_ga_04YGWK0175*MTczODE3MDI5MS4yMC4wLjE3MzgxNzAyOTEuMC4wLjA.
 
-A new Flutter project.
+Follow flutter instruction like adding some things to environment variabeles
 
-## Getting Started
+# Install Android Studio for Emulator.
+https://developer.android.com/studio
 
-This project is a starting point for a Flutter application.
+Create Phone Emulator (I used Pixel 6 witth android 13.0)
 
-A few resources to get you started if this is your first Flutter project:
+# Get dependencies
+flutter pub get
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+# Run build
+flutter run
